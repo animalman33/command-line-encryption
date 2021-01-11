@@ -34,7 +34,9 @@ static int checkIfExists(char *filename) {
   return 1;
 }
 
-int encrypt(char *filename, char *mode, char *password, char *outfile) {
+static int setupCipher(gcry_cipher_hd_t *h, char *mode, int bitsize);
+
+int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsize) {
   //checks to make sure filename is not null and provides error message
   if(filename == NULL) {
     fprintf(stderr, "File Does not exist");
@@ -55,9 +57,8 @@ int encrypt(char *filename, char *mode, char *password, char *outfile) {
     fprintf(stderr, "Outfile exist cannont continue");
     return -1;
   }
-  char *supMode = "AES-GCM-256";
-  if(!strcasecmp(mode, supMode)) {
-    fprintf(stderr, "unsupported mode");
+  gcry_cipher_hd_t *h = malloc(sizeof(gcry_cipher_hd_t));
+  if (setupCipher(h, mode, bitsize)) {
     return -1;
   }
   FILE *fd;
@@ -65,5 +66,36 @@ int encrypt(char *filename, char *mode, char *password, char *outfile) {
     fprintf(stderr, "file failed to open");
     return -1;
   }
+  return 0;
+}
+
+
+static int setupCipher(gcry_cipher_hd_t *h, char *mode, int bitsize) {
+  int algo;
+  switch (bitsize) {
+    case 256:
+      algo = GCRY_CIPHER_AES256;
+      break;
+    case 192:
+      algo = GCRY_CIPHER_AES192;
+      break;
+    case 128:
+      algo = GCRY_CIPHER_AES;
+      break;
+    default:
+      fprintf(stderr, "Unrecognized bit size must be either 128, 192, 256");
+      return -1;
+  }
+
+  char *supMode[] = { "GCM" };
+  int modeType[] = { GCRY_CIPHER_MODE_GCM };
+  int modeNum;
+  for(int i = 0; i < 1; i++) {
+    if(strcmp(supMode[i], mode)) {
+      modeNum = modeType[i];
+      break;
+    }
+  }
+  gcry_cipher_open(h, algo, modeNum, 0);
   return 0;
 }
