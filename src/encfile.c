@@ -58,8 +58,8 @@ int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
     fprintf(stderr, "Outfile exist cannont continue");
     return -1;
   }
-  gcry_cipher_hd_t *h = malloc(sizeof(gcry_cipher_hd_t));
-  if (setupCipher(h, mode, bitsize)) {
+  gcry_cipher_hd_t *hd = malloc(sizeof(gcry_cipher_hd_t));
+  if (setupCipher(hd, mode, bitsize)) {
     return -1;
   }
   FILE *fd;
@@ -72,6 +72,9 @@ int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
     fprintf(stderr, "could not generate key");
     return -1;
   }
+  gcry_cipher_setkey(*hd, key, 32);
+  void *iv = gcry_random_bytes(32, GCRY_STRONG_RANDOM);
+  gcry_cipher_setiv(*hd, iv, 32);
   return 0;
 }
 

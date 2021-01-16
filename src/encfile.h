@@ -3,5 +3,4 @@
 #include <unistd.h>
 #include <gcrypt.h>
 
-
-int encrypt(char *filename, char *mode, char *password, char *outfile);
+int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsize);

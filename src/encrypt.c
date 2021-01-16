@@ -1,12 +1,12 @@
 #include <stdio.h>
 #include <argp.h>
-#include "encfile.c"
-#include "decfile.c"
+#include "encfile.h"
+#include "decfile.h"
 
 //program documentation
 static char doc[] = "basic command line encryption/decryption tool";
 
-static char args_doc[] = "ARGS1 ARGS2";
+static char args_doc[] = "input output";
 
 //understood arguments
 static struct argp_option options[] = {
@@ -14,19 +14,20 @@ static struct argp_option options[] = {
 				       {"decrypt", 'd', 0, OPTION_ARG_OPTIONAL, "tells the program to decrypt input file to output file"},
 				       {"output", 'o', "FILE", 0, "tells program what file to output to will create file if necessary"},
 				       {"infile", 'i', "FILE", 0, "tells the program what file to take input from and encrypt/decrypt"},
-				       {"type", 't', 0, OPTION_ARG_OPTIONAL, "determines the type of encryption to use default=AES-GCM-256"},
+				       {"mode", 'm', 0, OPTION_ARG_OPTIONAL, "determines the mode of encryption to use default=GCM"},
 				       {"password", 'p', 0, OPTION_ARG_OPTIONAL, "password for aes key do not use unless do large amount of files highly insecure the password will be asked for when necessary"},
+				       {"bitsize", 'b', 0, OPTION_ARG_OPTIONAL, "determines bitsize to use for key default 256 bits"},
 				       { 0 }
 };
 
 //used by main to parse args
 struct arguments {
-  char *args[2]; /*ARGS1 ARGS2*/
   int encrypt;
   char *outfile;
   char *infile;
   char *password;
-  char *type;
+  char *mode;
+  int bitsize;
 };
 
 
@@ -51,14 +52,22 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     case 'p':
       arguments->password = arg;
       break;
-    case 't':
-      arguments->type = arg;
+    case 'm':
+      arguments->mode = arg;
+      break;
+    case 'b':
+      arguments->bitsize = atoi(arg);
       break;
     case ARGP_KEY_ARG:
       if(state->arg_num > 2) {
 	argp_usage(state);
       }
-      arguments->args[state->arg_num] = arg;
+      if(state->arg_num == 0) {
+	arguments->infile = arg;
+      }
+      else if(state->arg_num == 1) {
+	arguments->outfile = arg;
+      }
       break;
     case ARGP_KEY_END:
       break;
@@ -77,15 +86,22 @@ int main(int argc, char **argv) {
   struct arguments arguments;
   //sets default arguments for operation
   arguments.encrypt = 1;
-  arguments.outfile = "-";
+  arguments.outfile = NULL;
   arguments.infile = NULL;
   arguments.password = NULL;
-  arguments.type = "AES-GCM-256";
+  arguments.mode = "GCM";
+  arguments.bitsize = 256;
   //parses args
   argp_parse(&argp, argc, argv, 0, 0, &arguments);
   //calls proper function for mode of program
+  if(arguments.outfile == NULL) {
+    fprintf(stderr, "output file not specified");
+  }
+  if(arguments.bitsize != 256 || arguments.bitsize != 128 || arguments.bitsize != 192) {
+    fprintf(stderr, "bitsize is incorrect value must be either 256, 192 or 128");
+  }
   if(arguments.encrypt) {
-    return encrypt(arguments.infile, arguments.type, arguments.password, arguments.outfile);
+    return encrypt(arguments.infile, arguments.mode, arguments.password, arguments.outfile, arguments.bitsize);
   }
   else {
     puts("decrypt");
