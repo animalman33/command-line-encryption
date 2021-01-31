@@ -43,7 +43,7 @@ static int checkIfFile(char *filename) {
   }*/
 
 static int setupCipher(gcry_cipher_hd_t *h, char *mode, int bitsize);
-static void *genKey(char *password);
+static void *genKey(char *password, FILE *fdOut);
 
 int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsize) {
   //checks to make sure filename is not null and provides error message
@@ -85,7 +85,7 @@ int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
     fprintf(stderr, "output file failed to open\n");
     return -1;
   }
-  void *key = genKey(password);
+  void *key = genKey(password, fdOut);
   if(key == NULL) {
     fprintf(stderr, "could not generate key\n");
     return -1;
@@ -97,6 +97,7 @@ int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
     return -1;
   }
   void *iv = gcry_random_bytes(32, GCRY_STRONG_RANDOM);
+  fwrite(fdOut, 1, 32, fdOut);
   err = gcry_cipher_setiv(*hd, iv, 32);
   if(err) {
     printGcryErr("gcry_random_bytes", err);
@@ -153,9 +154,10 @@ static int setupCipher(gcry_cipher_hd_t *h, char *mode, int bitsize) {
   return 0;
 }
 
-static void *genKey(char *password) {
+static void *genKey(char *password, FILE *fdOut) {
   void *salt = gcry_random_bytes_secure(32, GCRY_STRONG_RANDOM);
   void *key = malloc(32);
+  fwrite(salt, 1, 32, fdOut);
   if(key == NULL) {
     return NULL;
   }
