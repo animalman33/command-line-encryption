@@ -95,10 +95,11 @@ int main(int argc, char **argv) {
   argp_parse(&argp, argc, argv, 0, 0, &arguments);
   //calls proper function for mode of program
   if(arguments.outfile == NULL) {
-    fprintf(stderr, "output file not specified");
+    fprintf(stderr, "output file not specified\n");
   }
-  if(arguments.bitsize != 256 || arguments.bitsize != 128 || arguments.bitsize != 192) {
-    fprintf(stderr, "bitsize is incorrect value must be either 256, 192 or 128");
+  if(arguments.bitsize != 256 && arguments.bitsize != 128 && arguments.bitsize != 192) {
+    fprintf(stderr, "bitsize is incorrect value must be either 256, 192 or 128\n");
+    return -1;
   }
   if(arguments.encrypt) {
     return encrypt(arguments.infile, arguments.mode, arguments.password, arguments.outfile, arguments.bitsize);
