@@ -14,30 +14,28 @@ static struct argp_option options[] = {
 				       {"decrypt", 'd', 0, OPTION_ARG_OPTIONAL, "tells the program to decrypt input file to output file"},
 				       {"output", 'o', "FILE", 0, "tells program what file to output to will create file if necessary"},
 				       {"infile", 'i', "FILE", 0, "tells the program what file to take input from and encrypt/decrypt"},
-				       {"mode", 'm', 0, OPTION_ARG_OPTIONAL, "determines the mode of encryption to use default=GCM"},
+				       {"mode", 'm', "MODE", 0, "determines the mode of encryption to use default=GCM"},
 				       {"password", 'p', 0, OPTION_ARG_OPTIONAL, "password for aes key do not use unless do large amount of files highly insecure the password will be asked for when necessary"},
-				       {"bitsize", 'b', 0, OPTION_ARG_OPTIONAL, "determines bitsize to use for key default 256 bits"},
-				       {"readsize", 'r', 0, OPTION_ARG_OPTIONAL, "determines the amount of data read from file per operation"},
+				       {"bitsize", 'b', "BITSIZE", 0, "determines bitsize to use for key default 256 bits"},
+				       {"readsize", 'r', "READSIZE", 0, "determines the amount of data read from file per operation"},
 				       { 0 }
 };
 
 //used by main to parse args
 struct arguments {
-  int encrypt;
   char *outfile;
   char *infile;
   char *password;
   char *mode;
   int bitsize;
   int readsize;
+  int encrypt;
 };
 
 
 //function to be used by arg_parse to set indivisial arguments
 static error_t parse_opt(int key, char *arg, struct argp_state *state) {
-
   struct arguments *arguments = state->input;
-
   switch (key) {
     case 'e':
       arguments->encrypt = 1;
@@ -67,7 +65,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
       if(state->arg_num > 2) {
 	argp_usage(state);
       }
-      if(state->arg_num == 0) {
+      else if(state->arg_num == 0) {
 	arguments->infile = arg;
       }
       else if(state->arg_num == 1) {
@@ -103,15 +101,16 @@ int main(int argc, char **argv) {
   if(arguments.outfile == NULL) {
     fprintf(stderr, "output file not specified\n");
   }
-  if(arguments.bitsize != 256 && arguments.bitsize != 128 && arguments.bitsize != 192) {
+  int bitsize = arguments.bitsize;
+  if(bitsize != 256 && bitsize != 128 && bitsize != 192) {
     fprintf(stderr, "bitsize is incorrect value must be either 256, 192 or 128\n");
     return -1;
   }
   if(arguments.encrypt) {
-    return encrypt(arguments.infile, arguments.mode, arguments.password, arguments.outfile, arguments.bitsize, arguments.readsize);
+    return encrypt(arguments.infile, arguments.mode, arguments.password, arguments.outfile, bitsize, arguments.readsize);
   }
   else {
-    return decrypt(arguments.infile, arguments.mode, arguments.password, arguments.outfile, arguments.bitsize, arguments.readsize);
+    return decrypt(arguments.infile, arguments.mode, arguments.password, arguments.outfile, bitsize, arguments.readsize);
   }
   return 0;
 }

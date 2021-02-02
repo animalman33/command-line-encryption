@@ -54,7 +54,6 @@ int decrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
     fprintf(stderr, "invalid or corrupted file, nothing to decrypt\n");
     return -1;
   }
-  printf("%zu\n", ftell(fdIn));
   void *key = genKey(password, salt);
   gcry_cipher_hd_t *hd = malloc(sizeof(gcry_cipher_hd_t));
   setupCipher(hd, mode, bitsize, iv, key);
@@ -65,7 +64,6 @@ int decrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
   size_t filesize = ftell(fdIn)-64;
   rewind(fdIn);
   fseek(fdIn, 64, SEEK_CUR);
-  printf("%zu\n", ftell(fdIn));
   while(!feof(fdIn) && filesize % readsize == 0 && (readAmnt = fread(loc, 1, readsize, fdIn)) > 0) {
     filesize -= readsize;
     err = gcry_cipher_decrypt(*hd, loc, readAmnt, NULL, 0);
