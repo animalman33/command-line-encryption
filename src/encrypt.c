@@ -17,6 +17,7 @@ static struct argp_option options[] = {
 				       {"mode", 'm', 0, OPTION_ARG_OPTIONAL, "determines the mode of encryption to use default=GCM"},
 				       {"password", 'p', 0, OPTION_ARG_OPTIONAL, "password for aes key do not use unless do large amount of files highly insecure the password will be asked for when necessary"},
 				       {"bitsize", 'b', 0, OPTION_ARG_OPTIONAL, "determines bitsize to use for key default 256 bits"},
+				       {"readsize", 'r', 0, OPTION_ARG_OPTIONAL, "determines the amount of data read from file per operation"},
 				       { 0 }
 };
 
@@ -28,6 +29,7 @@ struct arguments {
   char *password;
   char *mode;
   int bitsize;
+  int readsize;
 };
 
 
@@ -57,6 +59,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
       break;
     case 'b':
       arguments->bitsize = atoi(arg);
+      break;
+    case 'r':
+      arguments->readsize = atoi(arg);
       break;
     case ARGP_KEY_ARG:
       if(state->arg_num > 2) {
@@ -91,6 +96,7 @@ int main(int argc, char **argv) {
   arguments.password = NULL;
   arguments.mode = "GCM";
   arguments.bitsize = 256;
+  arguments.readsize = 1024;
   //parses args
   argp_parse(&argp, argc, argv, 0, 0, &arguments);
   //calls proper function for mode of program
@@ -102,10 +108,10 @@ int main(int argc, char **argv) {
     return -1;
   }
   if(arguments.encrypt) {
-    return encrypt(arguments.infile, arguments.mode, arguments.password, arguments.outfile, arguments.bitsize);
+    return encrypt(arguments.infile, arguments.mode, arguments.password, arguments.outfile, arguments.bitsize, arguments.readsize);
   }
   else {
-    puts("decrypt");
+    return decrypt(arguments.infile, arguments.mode, arguments.password, arguments.outfile, arguments.bitsize, arguments.readsize);
   }
   return 0;
 }

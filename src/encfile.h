@@ -3,4 +3,5 @@
 #include <unistd.h>
 #include <gcrypt.h>
 
-int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsize);
+//driver function definition for encrypting a file
+int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsize, int readsize);
