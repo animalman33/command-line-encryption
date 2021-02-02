@@ -7,7 +7,7 @@ GCRYPTFLAGS := $(shell libgcrypt-config --cflags)
 
 GCRYPTLIBS := $(shell libgcrypt-config --libs)
 #creates encrypt from source code
-encrypt: src/encrypt.o src/encfile.o src/decfile.o
+encrypt: src/encrypt.o src/encfile.o src/decfile.o src/utils.o
 	$(CC) -o encrypt $^ $(GCRYPTLIBS) $(GCRYPTFLAGS)
 #makes all .o files from .c files
 %.o: %.c
