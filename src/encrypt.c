@@ -6,18 +6,17 @@
 //program documentation
 static char doc[] = "basic command line encryption/decryption tool";
 
-static char args_doc[] = "input output";
+static char args_doc[] = "input";
 
 //understood arguments
 static struct argp_option options[] = {
 				       {"encrypt", 'e', 0, OPTION_ARG_OPTIONAL, "tells the program to encrypt file input defaults to this if unspecified"},
 				       {"decrypt", 'd', 0, OPTION_ARG_OPTIONAL, "tells the program to decrypt input file to output file"},
 				       {"output", 'o', "FILE", 0, "tells program what file to output to will create file if necessary"},
-				       {"infile", 'i', "FILE", 0, "tells the program what file to take input from and encrypt/decrypt"},
 				       {"mode", 'm', "MODE", 0, "determines the mode of encryption to use default=GCM"},
-				       {"password", 'p', 0, OPTION_ARG_OPTIONAL, "password for aes key do not use unless do large amount of files highly insecure the password will be asked for when necessary"},
+				       {"password", 'p', "PASSWORD", 0, "password for aes key do not use unless do large amount of files highly insecure the password will be asked for when necessary"},
 				       {"bitsize", 'b', "BITSIZE", 0, "determines bitsize to use for key default 256 bits"},
-				       {"readsize", 'r', "READSIZE", 0, "determines the amount of data read from file per operation"},
+				       {"readsize", 'r', "READSIZE", 0, "determines the amount of data read from file per operation in kilobytes"},
 				       { 0 }
 };
 
@@ -46,9 +45,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     case 'o':
       arguments->outfile = arg;
       break;
-    case 'i':
-      arguments->infile = arg;
-      break;
     case 'p':
       arguments->password = arg;
       break;
@@ -59,17 +55,14 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
       arguments->bitsize = atoi(arg);
       break;
     case 'r':
-      arguments->readsize = atoi(arg);
+      arguments->readsize = atoi(arg) * 1024;
       break;
     case ARGP_KEY_ARG:
-      if(state->arg_num > 2) {
+      if(state->arg_num >= 1) {
 	argp_usage(state);
       }
       else if(state->arg_num == 0) {
 	arguments->infile = arg;
-      }
-      else if(state->arg_num == 1) {
-	arguments->outfile = arg;
       }
       break;
     case ARGP_KEY_END:

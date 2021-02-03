@@ -7,7 +7,7 @@
 #include "utils.h"
 
 
-int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsize, int readsize) {
+int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsize, size_t readsize) {
   int inLine = 0;
   //checks to make sure filename is not null and provides error message
   if(filename == NULL) {
@@ -79,7 +79,7 @@ int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
   fseek(fdIn, 0, SEEK_END);
   size_t filesize = ftell(fdIn);
   rewind(fdIn);
-  while(!feof(fdIn) && filesize % readsize == 0 && (readAmnt = fread(loc, 1, readsize, fdIn)) > 0) {
+  while(!feof(fdIn) && filesize > readsize && (readAmnt = fread(loc, 1, readsize, fdIn)) > 0) {
     filesize -= readsize;
     err = gcry_cipher_encrypt(*hd, loc, readAmnt, NULL, 0);
     if(err) {
@@ -96,7 +96,7 @@ int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
       }
     }
   }
-  if(filesize != 0) {
+  if(filesize > 0) {
     if(feof(fdIn)) {
       fprintf(stderr, "EOF reached but file size is larger\n");
     }
@@ -116,6 +116,8 @@ int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
       }
     }
   }
+  fclose(fdIn);
+  fclose(fdOut);
   if(inLine) {
     remove(filename);
     rename(outfile, filename);

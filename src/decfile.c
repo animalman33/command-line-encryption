@@ -5,7 +5,7 @@
 #include "decfile.h"
 #include "utils.h"
 
-int decrypt(char *filename, char *mode, char *password, char *outfile, int bitsize, int readsize) {
+int decrypt(char *filename, char *mode, char *password, char *outfile, int bitsize, size_t readsize) {
   int inLine = 0;
   if(filename == NULL) {
     fprintf(stderr, "input file is NULL please provide a filename for decryption\n");
@@ -80,7 +80,7 @@ int decrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
   size_t filesize = ftell(fdIn)-64;
   rewind(fdIn);
   fseek(fdIn, 64, SEEK_CUR);
-  while(!feof(fdIn) && filesize % readsize == 0 && (readAmnt = fread(loc, 1, readsize, fdIn)) > 0) {
+  while(!feof(fdIn) && filesize < readsize && (readAmnt = fread(loc, 1, readsize, fdIn)) > 0) {
     filesize -= readsize;
     err = gcry_cipher_decrypt(*hd, loc, readAmnt, NULL, 0);
     if(err) {
@@ -91,7 +91,7 @@ int decrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
       return -1;
     }
   }
-  if(filesize != 0) {
+  if(filesize > 0) {
     if(feof(fdIn)) {
       fprintf(stderr, "end of file reached while amount left to read file is > 0\n");
       return -1;
@@ -107,6 +107,8 @@ int decrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
       }
     }
   }
+  fclose(fdIn);
+  fclose(fdOut);
   if(inLine) {
     remove(filename);
     rename(outfile, filename);
