@@ -97,15 +97,13 @@ int main(int argc, char **argv) {
   arguments.readsize = 1024;
   //parses args
   argp_parse(&argp, argc, argv, 0, 0, &arguments);
-  //calls proper function for mode of program
-  if(arguments.outfile == NULL) {
-    fprintf(stderr, "output file not specified\n");
-  }
+  //determines if bitsize is acceptable or not
   int bitsize = arguments.bitsize;
   if(bitsize != 256 && bitsize != 128 && bitsize != 192) {
     fprintf(stderr, "bitsize is incorrect value must be either 256, 192 or 128\n");
     return -1;
   }
+  //calls proper function for correct name
   if(arguments.encrypt) {
     return encrypt(arguments.infile, arguments.mode, arguments.password, arguments.outfile, bitsize, arguments.readsize);
   }

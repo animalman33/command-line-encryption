@@ -6,16 +6,19 @@
 #include "utils.h"
 
 int decrypt(char *filename, char *mode, char *password, char *outfile, int bitsize, int readsize) {
-  if(filename == NULL || outfile == NULL) {
-    fprintf(stderr, "input or output file is NULL please provide a filename for decryption\n");
+  int inLine = 0;
+  if(filename == NULL) {
+    fprintf(stderr, "input file is NULL please provide a filename for decryption\n");
     return -1;
   }
   if(checkIfFile(filename)) {
     return -1;
   }
-  if(access(outfile, F_OK) == 0) {
-    fprintf(stderr, "outfile exists cannot continue\n");
-    return -1;
+  if(outfile != NULL) {
+    if(access(outfile, F_OK) == 0) {
+      fprintf(stderr, "outfile exists cannot continue\n");
+      return -1;
+    }
   }
   if(password == NULL) {
     password = getpass("Password to use for decryption: ");
@@ -28,13 +31,26 @@ int decrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
   FILE *fdIn;
   FILE *fdOut;
 
-  if((fdIn = fopen(filename, "r")) == NULL) {
+  if((fdIn = fopen(filename, "r+")) == NULL) {
     fprintf(stderr, "input file failed to open\n");
     return -1;
   }
-  if((fdOut = fopen(outfile, "w")) == NULL) {
-    fprintf(stderr, "output file failed to open\n");
-    return -1;
+  if(outfile != NULL) {
+    if((fdOut = fopen(outfile, "w")) == NULL) {
+      fprintf(stderr, "output file failed to open\n");
+      return -1;
+    }
+  }
+  else {
+    int len = strlen(filename);
+    outfile = malloc((len+5));
+    strcpy(outfile, filename);
+    strcpy(outfile+len, ".dec");
+    inLine = 1;
+    if((fdOut = fopen(outfile, "w")) == NULL) {
+      fprintf(stderr, "unable to create temp file\n");
+      return -1;
+    }
   }
   void *iv = malloc(32);
   void *salt = malloc(32);
@@ -90,6 +106,10 @@ int decrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
 	return -1;
       }
     }
+  }
+  if(inLine) {
+    remove(filename);
+    rename(outfile, filename);
   }
   return 0;
 }

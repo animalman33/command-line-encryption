@@ -8,9 +8,10 @@
 
 
 int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsize, int readsize) {
+  int inLine = 0;
   //checks to make sure filename is not null and provides error message
-  if(filename == NULL || outfile == NULL) {
-    fprintf(stderr, "input or output file is NULL please provide a filename for encryption\n");
+  if(filename == NULL) {
+    fprintf(stderr, "input file is NULL please provide a filename for encryption\n");
     return -1;
   }
   //checks that filename provided is actually a file and that it exists
@@ -26,23 +27,39 @@ int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
     fprintf(stderr, "Empty password is invalid\n");
     return -1;
   }
-  if(access(outfile, F_OK) == 0) {
-    fprintf(stderr, "Outfile exist cannot continue\n");
-    return -1;
+  if(outfile != NULL) {
+    if(access(outfile, F_OK) == 0) {
+      fprintf(stderr, "Outfile exist cannot continue\n");
+      return -1;
+    }
   }
   gcry_cipher_hd_t *hd = malloc(sizeof(gcry_cipher_hd_t));
   if(hd == NULL) {
     fprintf(stderr, "Unable to allocate memory for hd\n");
+    return -1;
   }
   FILE *fdIn;
   FILE *fdOut;
-  if((fdIn = fopen(filename, "r")) == NULL) {
+  if((fdIn = fopen(filename, "r+")) == NULL) {
     fprintf(stderr, "input file failed to open\n");
     return -1;
   }
-  if((fdOut = fopen(outfile, "w")) == NULL) {
-    fprintf(stderr, "output file failed to open\n");
-    return -1;
+  if(outfile != NULL) {
+    if((fdOut = fopen(outfile, "w")) == NULL) {
+      fprintf(stderr, "output file failed to open\n");
+      return -1;
+    }
+  }
+  else {
+    int len = strlen(filename);
+    outfile = malloc((len + 5) * sizeof(char));
+    strcpy(outfile, filename);
+    strcpy(outfile + len, ".enc");
+    inLine = 1;
+    if((fdOut = fopen(outfile, "w")) == NULL) {
+      fprintf(stderr, "unable to create temp file\n");
+      return -1;
+    }
   }
   void *iv = gcry_random_bytes(32, GCRY_STRONG_RANDOM);
   void *salt = gcry_random_bytes_secure(32, GCRY_STRONG_RANDOM);
@@ -69,7 +86,14 @@ int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
       printGcryErr("gcry_cipher_encrypt", err);
     }
     if(fwrite(loc, 1, readsize, fdOut) == 0) {
+      fprintf(stderr, "unable to write to file\n");
       return -1;
+    }
+    if(inLine) {
+      if(fwrite(loc, 1, readsize, fdIn) == 0) {
+	fprintf(stderr, "unable to write to file\n");
+	return -1;
+      }
     }
   }
   if(filesize != 0) {
@@ -84,7 +108,17 @@ int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
       if(fwrite(loc, 1, filesize, fdOut) == 0) {
 	return -1;
       }
+      if(inLine) {
+	if(fwrite(loc, 1, readsize, fdIn) == 0) {
+	  fprintf(stderr, "unable to write to file\n");
+	  return -1;
+	}
+      }
     }
+  }
+  if(inLine) {
+    remove(filename);
+    rename(outfile, filename);
   }
   return 0;
 }
