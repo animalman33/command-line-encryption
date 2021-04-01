@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -99,6 +98,7 @@ int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
   if(filesize > 0) {
     if(feof(fdIn)) {
       fprintf(stderr, "EOF reached but file size is larger\n");
+      return -1;
     }
     if((readAmnt = fread(loc, 1, filesize, fdIn)) > 0) {
       err = gcry_cipher_encrypt(*hd, loc, filesize, NULL, 0);
@@ -116,9 +116,19 @@ int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
       }
     }
   }
+  void *tag = malloc(64);
+  err = gcry_cipher_gettag(hd, tag, 64);
+  if(err) {
+    printGcryErr("gcry_cipher_gettag", err);
+    return -1;
+  }
+  if(fwrite(tag, 1, 64, fdOut) == 0) {
+    fprintf(stderr, "Unable to write authentication tag to file\n");
+    return -1;
+  }
   fclose(fdIn);
   fclose(fdOut);
-  if(inLine) {
+  if(inLine) {    
     remove(filename);
     rename(outfile, filename);
   }
