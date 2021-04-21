@@ -117,7 +117,7 @@ int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
     }
   }
   void *tag = malloc(64);
-  err = gcry_cipher_gettag(hd, tag, 64);
+  err = gcry_cipher_gettag(*hd, tag, 64);
   if(err) {
     printGcryErr("gcry_cipher_gettag", err);
     return -1;
