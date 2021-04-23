@@ -77,10 +77,10 @@ int decrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
   size_t readAmnt = 0;
   gcry_error_t err;
   fseek(fdIn, 0, SEEK_END);
-  size_t filesize = ftell(fdIn)-64;
+  size_t filesize = ftell(fdIn)-80;
   rewind(fdIn);
   fseek(fdIn, 64, SEEK_CUR);
-  while(!feof(fdIn) && filesize < readsize && (readAmnt = fread(loc, 1, readsize, fdIn)) > 0) {
+  while(!feof(fdIn) && filesize > readsize && (readAmnt = fread(loc, 1, readsize, fdIn)) > 0) {
     filesize -= readsize;
     err = gcry_cipher_decrypt(*hd, loc, readAmnt, NULL, 0);
     if(err) {
@@ -91,6 +91,7 @@ int decrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
       return -1;
     }
   }
+  
   if(filesize > 0) {
     if(feof(fdIn)) {
       fprintf(stderr, "end of file reached while amount left to read file is > 0\n");
@@ -106,6 +107,18 @@ int decrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
 	return -1;
       }
     }
+  }
+  void *tag = malloc(16);
+  if(!feof(fdIn) && (readAmnt = fread(loc,1,16,fdIn)) > 0) {
+    puts("authenticating");
+    err = gcry_cipher_checktag(*hd, tag, readAmnt);
+    if(err) {
+      printGcryErr("gcry_cipher_checktag", err);
+    }
+    puts("Done");
+  }
+  else {
+    fprintf(stderr, "Unable to authenticate file may have been tampered with\n");
   }
   fclose(fdIn);
   fclose(fdOut);

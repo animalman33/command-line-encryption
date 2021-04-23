@@ -97,7 +97,7 @@ int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
   }
   if(filesize > 0) {
     if(feof(fdIn)) {
-      fprintf(stderr, "EOF reached but file size is larger\n");
+      fprintf(stderr, "EOF reached but file is not fully encrypted\n");
       return -1;
     }
     if((readAmnt = fread(loc, 1, filesize, fdIn)) > 0) {
@@ -116,13 +116,13 @@ int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsi
       }
     }
   }
-  void *tag = malloc(64);
-  err = gcry_cipher_gettag(*hd, tag, 64);
+  void *tag = malloc(16);
+  err = gcry_cipher_gettag(*hd, tag, 16);
   if(err) {
     printGcryErr("gcry_cipher_gettag", err);
     return -1;
   }
-  if(fwrite(tag, 1, 64, fdOut) == 0) {
+  if(fwrite(tag, 1, 16, fdOut) == 0) {
     fprintf(stderr, "Unable to write authentication tag to file\n");
     return -1;
   }
