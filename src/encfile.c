@@ -1,136 +1,99 @@
-#include <sys/types.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <gcrypt.h>
 #include "encfile.h"
 #include "utils.h"
+#include <errno.h>
+#include <gcrypt.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-
-int encrypt(char *filename, char *mode, char *password, char *outfile, int bitsize, size_t readsize) {
-  int inLine = 0;
-  //checks to make sure filename is not null and provides error message
-  if(filename == NULL) {
-    fprintf(stderr, "input file is NULL please provide a filename for encryption\n");
-    return -1;
-  }
-  //checks that filename provided is actually a file and that it exists
-  if(checkIfFile(filename)) {
-    return -1;
-  }
-  //gets password for encryption
-  if(password == NULL) {
-    password = getpass("Password to use for encryption: ");
-  }
-  //checks to make sure password is not empty
-  if(!*password) {
-    fprintf(stderr, "Empty password is invalid\n");
-    return -1;
-  }
-  if(outfile != NULL) {
-    if(access(outfile, F_OK) == 0) {
-      fprintf(stderr, "Outfile exist cannot continue\n");
-      return -1;
-    }
-  }
-  gcry_cipher_hd_t *hd = malloc(sizeof(gcry_cipher_hd_t));
-  if(hd == NULL) {
-    fprintf(stderr, "Unable to allocate memory for hd\n");
-    return -1;
-  }
+// storage of error number
+extern int errno;
+// function to encrypt a file
+int encrypt(char *filename, char *mode, char *password, char *outfile,
+            int bitsize, size_t readsize) {
   FILE *fdIn;
   FILE *fdOut;
-  if((fdIn = fopen(filename, "r+")) == NULL) {
-    fprintf(stderr, "input file failed to open\n");
-    return -1;
+  // open file to encrypt and check for errors
+  fdIn = fopen(filename, "r+");
+  if (fdIn == NULL) {
+    perror("unable to open input file");
+    exit(errno);
   }
-  if(outfile != NULL) {
-    if((fdOut = fopen(outfile, "w")) == NULL) {
-      fprintf(stderr, "output file failed to open\n");
-      return -1;
-    }
+  fdOut = fopen(outfile, "w");
+  if (fdOut == NULL) {
+    perror("unable to open output file");
+    exit(errno);
+  } // gets password for encryption
+  if (password == NULL) {
+    password = getpass("Password to use for encryption: ");
   }
-  else {
-    int len = strlen(filename);
-    outfile = malloc((len + 5) * sizeof(char));
-    strcpy(outfile, filename);
-    strcpy(outfile + len, ".enc");
-    inLine = 1;
-    if((fdOut = fopen(outfile, "w")) == NULL) {
-      fprintf(stderr, "unable to create temp file\n");
-      return -1;
-    }
+  // checks to make sure password is not empty
+  if (!*password) {
+    fprintf(stderr, "Empty password is invalid\n");
+    exit(EXIT_FAILURE);
   }
-  void *iv = gcry_random_bytes(32, GCRY_STRONG_RANDOM);
+  // setup encryption hd memory location and check errors
+  gcry_cipher_hd_t *hd = malloc(sizeof(gcry_cipher_hd_t));
+  if (hd == NULL) {
+    perror("allocation of hd memory failed");
+    exit(errno);
+  }
+
+  // setup data for encryption key
+  void *iv = gcry_random_bytes_secure(32, GCRY_STRONG_RANDOM);
   void *salt = gcry_random_bytes_secure(32, GCRY_STRONG_RANDOM);
-  fwrite(iv, 1, 32, fdOut);
-  fwrite(salt, 1, 32, fdOut);
   void *key = genKey(password, salt);
-  if(key == NULL) {
+  if (key == NULL) {
     fprintf(stderr, "could not generate key\n");
-    return -1;
+    return -EXIT_FAILURE;
   }
   if (setupCipher(hd, mode, bitsize, iv, key)) {
-    return -1;
+    exit(EXIT_FAILURE);
   }
+  // error variable for checking for errors during encryption process
   gcry_error_t err;
-  char *loc = malloc(readsize);
+  // buffer to contain read data
+  char *buf = malloc(readsize);
+  // amount of data that has been read
   size_t readAmnt = 0;
-  fseek(fdIn, 0, SEEK_END);
-  size_t filesize = ftell(fdIn);
-  rewind(fdIn);
-  while(!feof(fdIn) && filesize > readsize && (readAmnt = fread(loc, 1, readsize, fdIn)) > 0) {
-    filesize -= readsize;
-    err = gcry_cipher_encrypt(*hd, loc, readAmnt, NULL, 0);
-    if(err) {
+  // writes salt and iv to output file so that it can be used for decryption and
+  // checks for errors
+  if (fwrite(iv, EXIT_FAILURE, 32, fdOut) == 0) {
+    perror("unable to write out iv");
+    exit(EXIT_FAILURE);
+  }
+  if (fwrite(salt, EXIT_FAILURE, 32, fdOut) == 0) {
+    perror("unable to write out salt");
+    exit(EXIT_FAILURE);
+  }
+
+  while (!feof(fdIn) &&
+         (readAmnt = fread(buf, EXIT_FAILURE, readsize, fdIn)) > 0) {
+    err = gcry_cipher_encrypt(*hd, buf, readAmnt, NULL, 0);
+    if (err) {
       printGcryErr("gcry_cipher_encrypt", err);
     }
-    if(fwrite(loc, 1, readsize, fdOut) == 0) {
-      fprintf(stderr, "unable to write to file\n");
-      return -1;
-    }
-    if(inLine) {
-      if(fwrite(loc, 1, readsize, fdIn) == 0) {
-	fprintf(stderr, "unable to write to file\n");
-	return -1;
-      }
+    if (fwrite(buf, EXIT_FAILURE, readAmnt, fdOut) == 0) {
+      perror("unable to write to output file");
+      exit(EXIT_FAILURE);
     }
   }
-  if(filesize > 0) {
-    if(feof(fdIn)) {
-      fprintf(stderr, "EOF reached but file is not fully encrypted\n");
-      return -1;
-    }
-    if((readAmnt = fread(loc, 1, filesize, fdIn)) > 0) {
-      err = gcry_cipher_encrypt(*hd, loc, filesize, NULL, 0);
-      if(err) {
-	printGcryErr("gcry_cipher_encrypt", err);
-      }
-      if(fwrite(loc, 1, filesize, fdOut) == 0) {
-	return -1;
-      }
-      if(inLine) {
-	if(fwrite(loc, 1, readsize, fdIn) == 0) {
-	  fprintf(stderr, "unable to write to file\n");
-	  return -1;
-	}
-      }
-    }
-  }
+
+  // create tage from encryption algorithm
   void *tag = malloc(16);
   err = gcry_cipher_gettag(*hd, tag, 16);
-  if(err) {
+  if (err) {
     printGcryErr("gcry_cipher_gettag", err);
-    return -1;
+    exit(EXIT_FAILURE);
   }
-  if(fwrite(tag, 1, 16, fdOut) == 0) {
+  if (fwrite(tag, 1, 16, fdOut) == 0) {
     fprintf(stderr, "Unable to write authentication tag to file\n");
-    return -1;
+    exit(EXIT_FAILURE);
   }
+  puts((char *)tag);
+  // closes files
   fclose(fdIn);
   fclose(fdOut);
-  if(inLine) {    
-    remove(filename);
-    rename(outfile, filename);
-  }
   return 0;
 }
